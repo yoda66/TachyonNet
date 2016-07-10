@@ -5,7 +5,7 @@ import socket
 import struct
 
 
-class PacketTrap:
+class TachyonNet:
 
     def __init__(self, minport=2000, maxport=3000,
                  tcp_reset=False, bufsize=8192, backlog=20):
@@ -19,8 +19,7 @@ class PacketTrap:
         self.done = False
         self.ALLSOCKETS = []
         self.fd2sock = {}
-        self.tcpmux = select.poll()
-        self.udpmux = select.poll()
+        self.mux = select.poll()
         self.bind_tcp_sockets()
         self.bind_udp_sockets()
         return
@@ -32,9 +31,9 @@ class PacketTrap:
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 s.bind((self.addr, port))
-                self.fd2sock[s.fileno()] = s
+                self.fd2sock[s.fileno()] = { 'fileno': s, 'proto': 17 }
                 self.ALLSOCKETS.append(s)
-                self.udpmux.register(s)
+                self.mux.register(s)
                 good += 1
             except socket.error as e:
                 bad += 1
@@ -50,15 +49,15 @@ class PacketTrap:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.bind((self.addr, port))
                 s.listen(self.backlog)
-                s.setblocking(0)
+                #s.setblocking(0)
                 if self.tcp_reset:
                     s.setsockopt(
                         socket.SOL_SOCKET,
                         socket.SO_LINGER,
                         struct.pack('ii', 1, 0)
                     )
-                self.tcpmux.register(s)
-                self.fd2sock[s.fileno()] = s
+                self.mux.register(s)
+                self.fd2sock[s.fileno()] = { 'fileno': s, 'proto': 6 }
                 self.ALLSOCKETS.append(s)
                 good += 1
             except socket.error as e:
@@ -68,18 +67,26 @@ class PacketTrap:
 
     def tcp_connections(self):
         while not self.done:
-            ready = self.tcpmux.poll()
-            for s, event in ready:
-                self.tcp_accept_read(s)
+            ready = self.mux.poll(self.timeout)
+            for fd, event in ready:
+                self.read_data(fd)
         return
 
-    def tcp_accept_read(self, s):
-        cs, addr = self.fd2sock[s].accept()
-        data = cs.recv(self.bufsize)
-        print '[+] %15s:%05d TCP: %d bytes read' % (
-            addr[0], addr[1], len(data)
-        )
-        cs.close()
+    def read_data(self, fd):
+        s = self.fd2sock[fd]['fileno']
+        proto = self.fd2sock[fd]['proto']
+        if proto == 6:
+            cs, addr = s.accept()
+            data = cs.recv(self.bufsize)
+            print '[+] %15s:%05d TCP: %d bytes read' % (
+                addr[0], addr[1], len(data)
+            )
+            cs.close()
+        elif proto == 17:
+            data, addr = s.recvfrom(self.bufsize)
+            print '[+] %15s:%05d UDP: %d bytes read' % (
+                addr[0], addr[1], len(data)
+            )
         return
 
     def __del__(self):
@@ -87,7 +94,7 @@ class PacketTrap:
             s.close()
 
 if __name__ == '__main__':
-    p = PacketTrap(tcp_reset=True)
+    p = TachyonNet(tcp_reset=True)
     try:
         p.tcp_connections()
     except KeyboardInterrupt:
