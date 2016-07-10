@@ -6,7 +6,7 @@ import socket
 
 class PacketTrap:
 
-    def __init__(self, minport=2000, maxport=3000, bufsize=2048, backlog=20):
+    def __init__(self, minport=2000, maxport=3000, bufsize=8192, backlog=20):
         self.addr = '0.0.0.0'
         self.timeout = 5
         self.minport = minport
@@ -18,6 +18,9 @@ class PacketTrap:
         self.fd2sock = {}
         self.tcpmux = select.poll()
         self.bind_tcp_sockets()
+        return
+
+    def bind_udp_sockets(self):
         return
 
     def bind_tcp_sockets(self):
@@ -51,7 +54,6 @@ class PacketTrap:
         print '[+] %15s:%05d TCP: %d bytes read' % (
             addr[0], addr[1], len(data)
         )
-        print data
         cs.close()
         return
 
