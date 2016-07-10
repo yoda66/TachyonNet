@@ -7,7 +7,7 @@ import struct
 
 class TachyonNet:
 
-    def __init__(self, minport=2000, maxport=3000,
+    def __init__(self, minport=2000, maxport=2050,
                  tcp_reset=False, bufsize=8192, backlog=20):
         self.addr = '0.0.0.0'
         self.timeout = 5
@@ -20,20 +20,20 @@ class TachyonNet:
         self.ALLSOCKETS = []
         self.fd2sock = {}
         self.mux = select.poll()
+        #self.bind_udp_sockets()
         self.bind_tcp_sockets()
-        self.bind_udp_sockets()
         return
 
     def bind_udp_sockets(self):
         good = 0
         bad = 0
-        for port in range(self.minport, self.maxport+1):
+        for port in range(self.minport, self.maxport):
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 s.bind((self.addr, port))
+                self.mux.register(s)
                 self.fd2sock[s.fileno()] = { 'fileno': s, 'proto': 17 }
                 self.ALLSOCKETS.append(s)
-                self.mux.register(s)
                 good += 1
             except socket.error as e:
                 bad += 1
@@ -44,12 +44,12 @@ class TachyonNet:
     def bind_tcp_sockets(self):
         good = 0
         bad = 0
-        for port in range(self.minport, self.maxport+1):
+        for port in range(self.minport, self.maxport):
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.bind((self.addr, port))
                 s.listen(self.backlog)
-                #s.setblocking(0)
+                s.setblocking(0)
                 if self.tcp_reset:
                     s.setsockopt(
                         socket.SOL_SOCKET,
@@ -67,9 +67,10 @@ class TachyonNet:
 
     def tcp_connections(self):
         while not self.done:
-            ready = self.mux.poll(self.timeout)
+            ready = self.mux.poll()
             for fd, event in ready:
-                self.read_data(fd)
+                if event & select.POLLIN:
+                    self.read_data(fd)
         return
 
     def read_data(self, fd):
