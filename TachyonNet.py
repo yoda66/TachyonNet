@@ -3,14 +3,15 @@
 import select
 import socket
 import struct
+import time
 
 
 class TachyonNet:
 
-    def __init__(self, minport=2000, maxport=2050,
+    def __init__(self, minport=2000, maxport=2050, timeout=5000,
                  tcp_reset=False, bufsize=8192, backlog=20):
         self.addr = '0.0.0.0'
-        self.timeout = 500
+        self.timeout = timeout
         self.tcp_reset = tcp_reset
         self.minport = minport
         self.maxport = maxport
@@ -19,7 +20,7 @@ class TachyonNet:
         self.done = False
         self.ALLSOCKETS = []
         self.fd2sock = {}
-        self.tcpmux = select.poll()
+        self.mux = select.poll()
         self.bind_udp_sockets()
         self.bind_tcp_sockets()
         return
@@ -31,6 +32,7 @@ class TachyonNet:
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 s.bind((self.addr, port))
+                self.mux.register(s)
                 self.fd2sock[s.fileno()] = { 'fileno': s, 'proto': 17 }
                 self.ALLSOCKETS.append(s)
                 good += 1
@@ -55,7 +57,7 @@ class TachyonNet:
                         socket.SO_LINGER,
                         struct.pack('ii', 1, 0)
                     )
-                self.tcpmux.register(s)
+                self.mux.register(s)
                 self.fd2sock[s.fileno()] = { 'fileno': s, 'proto': 6 }
                 self.ALLSOCKETS.append(s)
                 good += 1
@@ -66,11 +68,16 @@ class TachyonNet:
 
     def tcp_connections(self):
         while not self.done:
-            # if timeout, it will not block
-            ready = self.tcpmux.poll(self.timeout)
+            """
+            If UDP sockets in MIX, timeout param does not
+            apply.  We need separate threads for UDP versus
+            TCP.
+            """
+            ready = self.mux.poll(1)
             for fd, event in ready:
                 if event & select.POLLIN:
                     self.read_data(fd)
+            time.sleep(0.1)
         return
 
     def read_data(self, fd):
