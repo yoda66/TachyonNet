@@ -2,13 +2,16 @@
 
 import select
 import socket
+import struct
 
 
 class PacketTrap:
 
-    def __init__(self, minport=2000, maxport=3000, bufsize=8192, backlog=20):
+    def __init__(self, minport=2000, maxport=3000,
+                 tcp_reset=False, bufsize=8192, backlog=20):
         self.addr = '0.0.0.0'
         self.timeout = 5
+        self.tcp_reset = tcp_reset
         self.minport = minport
         self.maxport = maxport
         self.backlog = backlog
@@ -32,6 +35,12 @@ class PacketTrap:
                 s.bind((self.addr, port))
                 s.listen(self.backlog)
                 s.setblocking(0)
+                if self.tcp_reset:
+                    s.setsockopt(
+                        socket.SOL_SOCKET,
+                        socket.SO_LINGER,
+                        struct.pack('ii', 1, 0)
+                    )
                 self.tcpmux.register(s)
                 self.fd2sock[s.fileno()] = s
                 self.ALLSOCKETS.append(s)
@@ -63,7 +72,7 @@ class PacketTrap:
             s.close()
 
 if __name__ == '__main__':
-    p = PacketTrap()
+    p = PacketTrap(tcp_reset=True)
     try:
         p.tcp_connections()
     except KeyboardInterrupt:
