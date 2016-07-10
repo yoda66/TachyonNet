@@ -20,10 +20,26 @@ class PacketTrap:
         self.ALLSOCKETS = []
         self.fd2sock = {}
         self.tcpmux = select.poll()
+        self.udpmux = select.poll()
         self.bind_tcp_sockets()
+        self.bind_udp_sockets()
         return
 
     def bind_udp_sockets(self):
+        good = 0
+        bad = 0
+        for port in range(self.minport, self.maxport+1):
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.bind((self.addr, port))
+                self.fd2sock[s.fileno()] = s
+                self.ALLSOCKETS.append(s)
+                self.udpmux.register(s)
+                good += 1
+            except socket.error as e:
+                bad += 1
+                continue
+        print '[*] UDP sockets: %d listening, %d failed.' % (good, bad)
         return
 
     def bind_tcp_sockets(self):
@@ -68,7 +84,6 @@ class PacketTrap:
 
     def __del__(self):
         for s in self.ALLSOCKETS:
-            self.tcpmux.unregister(s)
             s.close()
 
 if __name__ == '__main__':
