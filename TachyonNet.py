@@ -10,7 +10,7 @@ class TachyonNet:
     def __init__(self, minport=2000, maxport=2050,
                  tcp_reset=False, bufsize=8192, backlog=20):
         self.addr = '0.0.0.0'
-        self.timeout = 5
+        self.timeout = 500
         self.tcp_reset = tcp_reset
         self.minport = minport
         self.maxport = maxport
@@ -19,8 +19,8 @@ class TachyonNet:
         self.done = False
         self.ALLSOCKETS = []
         self.fd2sock = {}
-        self.mux = select.poll()
-        #self.bind_udp_sockets()
+        self.tcpmux = select.poll()
+        self.bind_udp_sockets()
         self.bind_tcp_sockets()
         return
 
@@ -31,7 +31,6 @@ class TachyonNet:
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 s.bind((self.addr, port))
-                self.mux.register(s)
                 self.fd2sock[s.fileno()] = { 'fileno': s, 'proto': 17 }
                 self.ALLSOCKETS.append(s)
                 good += 1
@@ -56,7 +55,7 @@ class TachyonNet:
                         socket.SO_LINGER,
                         struct.pack('ii', 1, 0)
                     )
-                self.mux.register(s)
+                self.tcpmux.register(s)
                 self.fd2sock[s.fileno()] = { 'fileno': s, 'proto': 6 }
                 self.ALLSOCKETS.append(s)
                 good += 1
@@ -67,7 +66,8 @@ class TachyonNet:
 
     def tcp_connections(self):
         while not self.done:
-            ready = self.mux.poll()
+            # if timeout, it will not block
+            ready = self.tcpmux.poll(self.timeout)
             for fd, event in ready:
                 if event & select.POLLIN:
                     self.read_data(fd)
