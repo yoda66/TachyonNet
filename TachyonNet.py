@@ -10,7 +10,8 @@ import threading
 class TachyonNet:
 
     def __init__(self, minport=1024, maxport=8192, timeout=1000,
-                 tcp_reset=False, bufsize=8192, backlog=20, threads=64):
+                 tcp_reset=False, bufsize=8192, backlog=20,
+                 tcp_threads=32, udp_threads=16):
 
         self.addr = '0.0.0.0'
         self.timeout = timeout
@@ -24,14 +25,14 @@ class TachyonNet:
         self.fd2sock = {}
 
         self.threads = []
-        ports2thread = [ [] for x in range(threads) ]
+        tcp_ports2thread = [ [] for x in range(tcp_threads) ]
         for i in range(minport, maxport):
-            ports2thread[i % threads].append(i)
+            tcp_ports2thread[i % tcp_threads].append(i)
 
-        for i in range(threads):
+        for i in range(tcp_threads):
             t = threading.Thread(
                 target=self.tcp_thread_main,
-                args=[ ports2thread[i % threads] ]
+                args=[ tcp_ports2thread[i % tcp_threads] ]
             )
             t.name = '_tcp%02d' % (i)
             t.start()
@@ -91,9 +92,9 @@ class TachyonNet:
                 self.ALLSOCKETS.append(s)
                 good += 1
             except socket.error as e:
+                print '[-] TCP: error binding port %d: %s' % (port, e)
                 bad += 1
                 continue
-        print '[*] TCP sockets: %d listening, %d failed.' % (good, bad)
         return mux
 
     def tcp_connections(self, mux):
@@ -116,10 +117,8 @@ class TachyonNet:
                     addr[0], addr[1], len(data)
                 )
                 cs.close()
-            except Exception as e:
-                print '[-] %s: %s' % (
-                    threading.current_thread().name, e
-                )
+            except:
+                pass
         elif proto == 17:
             data, addr = s.recvfrom(self.bufsize)
             print '[+] (%s) %15s:%05d UDP: %d bytes read' % (
