@@ -9,8 +9,8 @@ import threading
 
 class TachyonNet:
 
-    def __init__(self, minport=2000, maxport=2400, timeout=1000,
-                 tcp_reset=False, bufsize=8192, backlog=20, threads=32):
+    def __init__(self, minport=1024, maxport=2048, timeout=1000,
+                 tcp_reset=False, bufsize=8192, backlog=20, threads=64):
 
         self.addr = '0.0.0.0'
         self.timeout = timeout
@@ -117,10 +117,10 @@ class TachyonNet:
                 )
                 cs.close()
             except Exception as e:
-                print '[+] (%s) %15s:%05d TCP: %s' % (
-                    threading.current_thread().name,
-                    addr[0], addr[1], e
+                print '[-] %s: %s' % (
+                    threading.current_thread().name, e
                 )
+                self.done = True
         elif proto == 17:
             data, addr = s.recvfrom(self.bufsize)
             print '[+] (%s) %15s:%05d UDP: %d bytes read' % (
