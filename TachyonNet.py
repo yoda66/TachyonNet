@@ -9,7 +9,7 @@ import threading
 
 class TachyonNet:
 
-    def __init__(self, minport=1024, maxport=2048, timeout=1000,
+    def __init__(self, minport=1024, maxport=8192, timeout=1000,
                  tcp_reset=False, bufsize=8192, backlog=20, threads=64):
 
         self.addr = '0.0.0.0'
@@ -38,7 +38,7 @@ class TachyonNet:
             self.threads.append(t)
 
         try:
-            while True:
+            while not self.done:
                 time.sleep(10)
         except KeyboardInterrupt:
             self.done = True
@@ -120,7 +120,6 @@ class TachyonNet:
                 print '[-] %s: %s' % (
                     threading.current_thread().name, e
                 )
-                self.done = True
         elif proto == 17:
             data, addr = s.recvfrom(self.bufsize)
             print '[+] (%s) %15s:%05d UDP: %d bytes read' % (
