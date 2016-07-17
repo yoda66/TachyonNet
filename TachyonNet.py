@@ -4,12 +4,14 @@ import select
 import socket
 import struct
 import time
+import threading
 
 
 class TachyonNet:
 
-    def __init__(self, minport=2000, maxport=2050, timeout=5000,
-                 tcp_reset=False, bufsize=8192, backlog=20):
+    def __init__(self, minport=2000, maxport=2400, timeout=1000,
+                 tcp_reset=False, bufsize=8192, backlog=20, threads=32):
+
         self.addr = '0.0.0.0'
         self.timeout = timeout
         self.tcp_reset = tcp_reset
@@ -20,9 +22,35 @@ class TachyonNet:
         self.done = False
         self.ALLSOCKETS = []
         self.fd2sock = {}
-        self.mux = select.poll()
-        self.bind_udp_sockets()
-        self.bind_tcp_sockets()
+
+        self.threads = []
+        ports2thread = [ [] for x in range(threads) ]
+        for i in range(minport, maxport):
+            ports2thread[i % threads].append(i)
+
+        for i in range(threads):
+            t = threading.Thread(
+                target=self.tcp_thread_main,
+                args=[ ports2thread[i % threads] ]
+            )
+            t.name = '_tcp%02d' % (i)
+            t.start()
+            self.threads.append(t)
+
+        try:
+            while True:
+                time.sleep(10)
+        except KeyboardInterrupt:
+            self.done = True
+
+        print '[+] Exiting...'
+        for t in self.threads:
+            t.join()
+        return
+
+    def tcp_thread_main(self, portlist):
+        mux = self.bind_tcp_sockets(portlist)
+        self.tcp_connections(mux)
         return
 
     def bind_udp_sockets(self):
@@ -32,7 +60,7 @@ class TachyonNet:
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 s.bind((self.addr, port))
-                self.mux.register(s)
+                self.udpmux.register(s)
                 self.fd2sock[s.fileno()] = { 'fileno': s, 'proto': 17 }
                 self.ALLSOCKETS.append(s)
                 good += 1
@@ -42,10 +70,11 @@ class TachyonNet:
         print '[*] UDP sockets: %d listening, %d failed.' % (good, bad)
         return
 
-    def bind_tcp_sockets(self):
+    def bind_tcp_sockets(self, portlist):
         good = 0
         bad = 0
-        for port in range(self.minport, self.maxport):
+        mux = select.poll()
+        for port in portlist:
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.bind((self.addr, port))
@@ -57,7 +86,7 @@ class TachyonNet:
                         socket.SO_LINGER,
                         struct.pack('ii', 1, 0)
                     )
-                self.mux.register(s)
+                mux.register(s)
                 self.fd2sock[s.fileno()] = { 'fileno': s, 'proto': 6 }
                 self.ALLSOCKETS.append(s)
                 good += 1
@@ -65,34 +94,37 @@ class TachyonNet:
                 bad += 1
                 continue
         print '[*] TCP sockets: %d listening, %d failed.' % (good, bad)
+        return mux
 
-    def tcp_connections(self):
+    def tcp_connections(self, mux):
         while not self.done:
-            """
-            If UDP sockets in MIX, timeout param does not
-            apply.  We need separate threads for UDP versus
-            TCP.
-            """
-            ready = self.mux.poll(1)
+            ready = mux.poll(self.timeout)
             for fd, event in ready:
                 if event & select.POLLIN:
                     self.read_data(fd)
-            time.sleep(0.1)
         return
 
     def read_data(self, fd):
         s = self.fd2sock[fd]['fileno']
         proto = self.fd2sock[fd]['proto']
         if proto == 6:
-            cs, addr = s.accept()
-            data = cs.recv(self.bufsize)
-            print '[+] %15s:%05d TCP: %d bytes read' % (
-                addr[0], addr[1], len(data)
-            )
-            cs.close()
+            try:
+                cs, addr = s.accept()
+                data = cs.recv(self.bufsize)
+                print '[+] (%s) %15s:%05d TCP: %d bytes read' % (
+                    threading.current_thread().name,
+                    addr[0], addr[1], len(data)
+                )
+                cs.close()
+            except Exception as e:
+                print '[+] (%s) %15s:%05d TCP: %s' % (
+                    threading.current_thread().name,
+                    addr[0], addr[1], e
+                )
         elif proto == 17:
             data, addr = s.recvfrom(self.bufsize)
-            print '[+] %15s:%05d UDP: %d bytes read' % (
+            print '[+] (%s) %15s:%05d UDP: %d bytes read' % (
+                threading.current_thread().name,
                 addr[0], addr[1], len(data)
             )
         return
@@ -103,8 +135,8 @@ class TachyonNet:
 
 if __name__ == '__main__':
     p = TachyonNet(tcp_reset=True)
-    try:
-        p.tcp_connections()
-    except KeyboardInterrupt:
-        print 'CTRL-C received. Exit.'
+    #try:
+    #    p.tcp_connections()
+    #except KeyboardInterrupt:
+    #    print 'CTRL-C received. Exit.'
 
