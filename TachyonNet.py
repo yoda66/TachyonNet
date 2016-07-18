@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import resource
 import select
 import socket
 import struct
@@ -28,6 +29,10 @@ class TachyonNet:
         self.tcp_threads = tcp_threads
         self.udp_threads = udp_threads
 
+        r_nofile = resource.getrlimit(resource.RLIMIT_NOFILE)
+        if r_nofile < (maxport - minport) / 2:
+            raise Exception('ERROR: insufficient file descriptors')
+
         self.start_tcp_threads()
         self.start_udp_threads()
 
@@ -43,14 +48,14 @@ class TachyonNet:
         return
 
     def start_tcp_threads(self):
-        tcp_ports2thread = [ [] for x in range(self.tcp_threads) ]
+        tcp_ports2thread = [[] for x in range(self.tcp_threads)]
         for i in range(self.minport, self.maxport):
             tcp_ports2thread[i % self.tcp_threads].append(i)
 
         for i in range(self.tcp_threads):
             t = threading.Thread(
                 target=self.tcp_thread_main,
-                args=[ tcp_ports2thread[i % self.tcp_threads] ]
+                args=[tcp_ports2thread[i % self.tcp_threads]]
             )
             t.name = '_tcp%02d' % (i)
             t.start()
@@ -58,14 +63,14 @@ class TachyonNet:
         return
 
     def start_udp_threads(self):
-        udp_ports2thread = [ [] for x in range(self.udp_threads) ]
+        udp_ports2thread = [[] for x in range(self.udp_threads)]
         for i in range(self.minport, self.maxport):
             udp_ports2thread[i % self.udp_threads].append(i)
 
         for i in range(self.udp_threads):
             t = threading.Thread(
                 target=self.udp_thread_main,
-                args=[ udp_ports2thread[i % self.udp_threads] ]
+                args=[udp_ports2thread[i % self.udp_threads]]
             )
             t.name = '_udp%02d' % (i)
             t.start()
@@ -99,7 +104,7 @@ class TachyonNet:
                         struct.pack('ii', 1, 0)
                     )
                 mux.register(s)
-                self.fd2sock[s.fileno()] = { 'fileno': s, 'proto': 6 }
+                self.fd2sock[s.fileno()] = {'fileno': s, 'proto': 6}
                 self.ALLSOCKETS.append(s)
                 good += 1
             except socket.error as e:
@@ -117,7 +122,7 @@ class TachyonNet:
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 s.bind((self.bind_addr, port))
                 mux.register(s)
-                self.fd2sock[s.fileno()] = { 'fileno': s, 'proto': 17 }
+                self.fd2sock[s.fileno()] = {'fileno': s, 'proto': 17}
                 self.ALLSOCKETS.append(s)
                 good += 1
             except socket.error as e:
