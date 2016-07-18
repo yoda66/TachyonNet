@@ -6,6 +6,8 @@ import socket
 import struct
 import time
 import threading
+import syslog
+import Queue
 
 
 class TachyonNet:
@@ -14,6 +16,7 @@ class TachyonNet:
     ALLSOCKETS = []
     fd2sock = {}
     done = False
+    LOGQ = Queue.Queue()
 
     def __init__(self, bind_addr='0.0.0.0', minport=1024, maxport=65535,
                  timeout=500, tcp_reset=False, bufsize=8192, backlog=32,
@@ -34,13 +37,25 @@ class TachyonNet:
         r_nofile_required = r_ports * 2.5
         if r_nofile < r_nofile_required:
             raise Exception(
-                'INSUFFICIENT AVAILABLE FILE DESCRIPTORS.\n' +
-                'Trying to listen on %d TCP/UDP ports\n' % (r_ports) +
-                '%d file descriptors are available.\n' % (r_nofile) +
-                '%d file descriptors are required.\n' % (r_nofile_required) +
-                'Modify /etc/security/limits.conf (Debian) ' +
+                '[-] ERROR: INSUFFICIENT AVAILABLE FILE DESCRIPTORS.\n' +
+                '[-] Trying to listen on %d TCP/UDP ports.\n' % (r_ports) +
+                '[-] %d file descriptors are available.\n' % (r_nofile) +
+                '[-] %d file descriptors are required.\n' % (r_nofile_required) +
+                '[-] Modify /etc/security/limits.conf (Debian) ' +
                 'OR reduce the port count.'
             )
+
+        # open syslog
+        syslog.openlog(
+            logoption=syslog.LOG_PID,
+            facility=syslog.LOG_USER
+        )
+
+        # start logger thread
+        t = threading.Thread(target=self.logger)
+        t.name = '_logger'
+        t.daemon = True
+        t.start()
 
         self.start_tcp_threads()
         self.start_udp_threads()
@@ -55,6 +70,15 @@ class TachyonNet:
         for t in self.THREADLIST:
             t.join()
         return
+
+    def logger(self):
+        while True:
+            data = self.LOGQ.get()
+            syslog.syslog(data)
+            self.LOGQ.task_done()
+
+    def dolog(self, msg):
+        self.LOGQ.put(msg)
 
     def start_tcp_threads(self):
         tcp_ports2thread = [[] for x in range(self.tcp_threads)]
@@ -117,7 +141,7 @@ class TachyonNet:
                 self.ALLSOCKETS.append(s)
                 good += 1
             except socket.error as e:
-                print '[-] TCP: error binding port %d: %s' % (port, e)
+                self.dolog('TCP: error binding port %d: %s' % (port, e))
                 bad += 1
                 continue
         return mux
@@ -135,7 +159,9 @@ class TachyonNet:
                 self.ALLSOCKETS.append(s)
                 good += 1
             except socket.error as e:
-                print '[-] UDP: error binding port %d: %s' % (port, e)
+                self.dolog(
+                    'UDP: error binding port %d: %s' % (port, e)
+                )
                 bad += 1
                 continue
         return mux
@@ -171,15 +197,17 @@ class TachyonNet:
                 sproto = 'UDP'
                 data, client_addr = s.recvfrom(self.bufsize)
 
-            print '[+] %s: %s:%d -> %s:%d: %d bytes read.' % (
-                sproto,
-                client_addr[0], client_addr[1],
-                server_addr[0], server_addr[1],
-                len(data)
+            self.dolog('%s: %s:%d -> %s:%d: %d bytes read.' %
+                (
+                    sproto,
+                    client_addr[0], client_addr[1],
+                    server_addr[0], server_addr[1],
+                    len(data)
+                )
             )
 
         except Exception as e:
-            print '[-] ERROR: %s' % (e)
+            self.dolog('ERROR: %s' % (e))
             pass
         return
 
@@ -188,4 +216,7 @@ class TachyonNet:
             s.close()
 
 if __name__ == '__main__':
-    p = TachyonNet(tcp_reset=True)
+    try:
+        TachyonNet(tcp_reset=True)
+    except Exception as e:
+        print e
