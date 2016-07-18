@@ -16,7 +16,7 @@ class TachyonNet:
     done = False
 
     def __init__(self, bind_addr='0.0.0.0', minport=1024, maxport=65535,
-                 timeout=500, tcp_reset=False, bufsize=8192, backlog=20,
+                 timeout=500, tcp_reset=False, bufsize=8192, backlog=32,
                  tcp_threads=32, udp_threads=32):
 
         self.bind_addr = bind_addr
@@ -29,9 +29,18 @@ class TachyonNet:
         self.tcp_threads = tcp_threads
         self.udp_threads = udp_threads
 
-        r_nofile = resource.getrlimit(resource.RLIMIT_NOFILE)
-        if r_nofile < (maxport - minport) / 2:
-            raise Exception('ERROR: insufficient file descriptors')
+        r_ports = maxport - minport
+        r_nofile = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
+        r_nofile_required = r_ports * 2.5
+        if r_nofile < r_nofile_required:
+            raise Exception(
+                'INSUFFICIENT AVAILABLE FILE DESCRIPTORS.\n' +
+                'Trying to listen on %d TCP/UDP ports\n' % (r_ports) +
+                '%d file descriptors are available.\n' % (r_nofile) +
+                '%d file descriptors are required.\n' % (r_nofile_required) +
+                'Modify /etc/security/limits.conf (Debian) ' +
+                'OR reduce the port count.'
+            )
 
         self.start_tcp_threads()
         self.start_udp_threads()
