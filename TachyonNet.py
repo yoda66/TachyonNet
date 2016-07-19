@@ -7,7 +7,9 @@ import struct
 import time
 import threading
 import syslog
+import os
 import Queue
+from datetime import datetime
 
 
 class TachyonNet:
@@ -18,9 +20,9 @@ class TachyonNet:
     done = False
     LOGQ = Queue.Queue()
 
-    def __init__(self, bind_addr='0.0.0.0', minport=1024, maxport=65535,
-                 timeout=500, tcp_reset=False, bufsize=8192, backlog=32,
-                 tcp_threads=32, udp_threads=32):
+    def __init__(self, bind_addr='0.0.0.0', minport=1024, maxport=32767,
+                 timeout=500, tcp_reset=False, bufsize=8192, backlog=32, tcp_threads=32,
+                 udp_threads=32, logdir='%s/.tachyon_net' % (os.path.expanduser('~'))):
 
         self.bind_addr = bind_addr
         self.minport = minport
@@ -31,6 +33,8 @@ class TachyonNet:
         self.backlog = backlog
         self.tcp_threads = tcp_threads
         self.udp_threads = udp_threads
+        self.logdir = logdir
+        self.logfile = '%s/tn.log' % (self.logdir)
 
         r_ports = maxport - minport
         r_nofile = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
@@ -50,6 +54,10 @@ class TachyonNet:
             logoption=syslog.LOG_PID,
             facility=syslog.LOG_USER
         )
+
+        # check logdir
+        if not os.path.exists(self.logdir):
+            os.mkdir(self.logdir)
 
         # start logger thread
         t = threading.Thread(target=self.logger)
@@ -72,13 +80,44 @@ class TachyonNet:
         return
 
     def logger(self):
+        lf = open(self.logfile, 'a')
         while True:
-            data = self.LOGQ.get()
-            syslog.syslog(data)
+            d = self.LOGQ.get()
+            if d[0] == 'msg':
+                syslog.syslog(d[1])
+                now = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+                lf.write('%s: %s\n' % (now, d[1]))
+                lf.flush()
+            elif d[0] == 'data':
+                self.logger_writedata(d[1])
             self.LOGQ.task_done()
 
-    def dolog(self, msg):
-        self.LOGQ.put(msg)
+    def logger_writedata(self, msg):
+        proto = msg[0]
+        src = msg[1]
+        dst = msg[2]
+        data = msg[3]
+        directory = '%s/%s' % (
+            self.logdir,
+            datetime.utcnow().strftime('%Y%m%d')
+        )
+        if not os.path.exists(directory):
+            os.mkdir(directory)
+        filename = '%s/%s_%s_%s__%s_%s' % (
+            directory, proto.lower(),
+            src[0], src[1], dst[0], dst[1]
+        )
+        f = open(filename, 'w')
+        f.write(data)
+        f.close()
+        return
+
+
+    def do_msglog(self, msg):
+        self.LOGQ.put(('msg', msg))
+
+    def do_datalog(self, proto, src, dst, data):
+        self.LOGQ.put(('data', (proto, src, dst, data)))
 
     def start_tcp_threads(self):
         tcp_ports2thread = [[] for x in range(self.tcp_threads)]
@@ -141,7 +180,7 @@ class TachyonNet:
                 self.ALLSOCKETS.append(s)
                 good += 1
             except socket.error as e:
-                self.dolog('TCP: error binding port %d: %s' % (port, e))
+                self.do_msglog('TCP: error binding port %d: %s' % (port, e))
                 bad += 1
                 continue
         return mux
@@ -159,7 +198,7 @@ class TachyonNet:
                 self.ALLSOCKETS.append(s)
                 good += 1
             except socket.error as e:
-                self.dolog(
+                self.do_msglog(
                     'UDP: error binding port %d: %s' % (port, e)
                 )
                 bad += 1
@@ -197,7 +236,7 @@ class TachyonNet:
                 sproto = 'UDP'
                 data, client_addr = s.recvfrom(self.bufsize)
 
-            self.dolog('%s: %s:%d -> %s:%d: %d bytes read.' %
+            self.do_msglog('%s: %s:%d -> %s:%d: %d bytes read.' %
                 (
                     sproto,
                     client_addr[0], client_addr[1],
@@ -205,9 +244,10 @@ class TachyonNet:
                     len(data)
                 )
             )
+            self.do_datalog(sproto, client_addr, server_addr, data)
 
         except Exception as e:
-            self.dolog('ERROR: %s' % (e))
+            self.do_msglog('ERROR: %s' % (e))
             pass
         return
 
