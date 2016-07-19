@@ -21,8 +21,9 @@ class TachyonNet:
     LOGQ = Queue.Queue()
 
     def __init__(self, bind_addr='0.0.0.0', minport=1024, maxport=32767,
-                 timeout=500, tcp_reset=False, bufsize=8192, backlog=32, tcp_threads=32,
-                 udp_threads=32, logdir='%s/.tachyon_net' % (os.path.expanduser('~'))):
+                 timeout=500, tcp_reset=False, bufsize=8192, backlog=32,
+                 tcp_threads=32, udp_threads=32,
+                 logdir='%s/.tachyon_net' % (os.path.expanduser('~'))):
 
         self.bind_addr = bind_addr
         self.minport = minport
@@ -38,13 +39,13 @@ class TachyonNet:
 
         r_ports = maxport - minport
         r_nofile = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
-        r_nofile_required = r_ports * 2.5
-        if r_nofile < r_nofile_required:
+        r_nofile_req = r_ports * 2.5
+        if r_nofile < r_nofile_req:
             raise Exception(
                 '[-] ERROR: INSUFFICIENT AVAILABLE FILE DESCRIPTORS.\n' +
                 '[-] Trying to listen on %d TCP/UDP ports.\n' % (r_ports) +
                 '[-] %d file descriptors are available.\n' % (r_nofile) +
-                '[-] %d file descriptors are required.\n' % (r_nofile_required) +
+                '[-] %d file descriptors are required.\n' % (r_nofile_req) +
                 '[-] Modify /etc/security/limits.conf (Debian) ' +
                 'OR reduce the port count.'
             )
@@ -111,7 +112,6 @@ class TachyonNet:
         f.write(data)
         f.close()
         return
-
 
     def do_msglog(self, msg):
         self.LOGQ.put(('msg', msg))
@@ -236,7 +236,8 @@ class TachyonNet:
                 sproto = 'UDP'
                 data, client_addr = s.recvfrom(self.bufsize)
 
-            self.do_msglog('%s: %s:%d -> %s:%d: %d bytes read.' %
+            self.do_msglog(
+                '%s: %s:%d -> %s:%d: %d bytes read.' %
                 (
                     sproto,
                     client_addr[0], client_addr[1],
