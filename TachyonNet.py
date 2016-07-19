@@ -104,7 +104,7 @@ class TachyonNet:
         )
         if not os.path.exists(directory):
             os.mkdir(directory)
-        filename = '%s/%s_%s_%s__%s_%s' % (
+        filename = '%s/%s_%s_%s__%s_%s.log' % (
             directory, proto.lower(),
             src[0], src[1], dst[0], dst[1]
         )
