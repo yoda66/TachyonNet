@@ -26,6 +26,29 @@ The file name itself consists of:
 
     proto_srcip_sport__dstip_dport.log
 
+## Usage
+
+    [*] ======================================
+    [*]  TachyonNet Version 20160720_1.0
+    [*]  Author: Joff Thyer (c) 2016
+    [*]  Black Hills Information Security
+    [*] ======================================
+
+    usage: tn.py [-h] [--minport MINPORT] [--maxport MAXPORT] [-b BINDADDR]
+             [-f FIN] [--bufsize BUFSIZE] [-t THREADS]
+
+    optional arguments:
+    -h, --help            show this help message and exit
+    --minport MINPORT     lowest TCP/UDP port in range to listen on
+    --maxport MAXPORT     highest TCP/UDP port in range to listen on
+    -b BINDADDR, --bindaddr BINDADDR
+                        IP address to bind/listen on (defaults to all)
+    -f FIN, --fin FIN     Use 3-way/4-way FIN/ACK to teardown connections
+                        (defaults to TCP RESET)
+    --bufsize BUFSIZE     buffer size to capture traffic (default: 8192 bytes)
+    -t THREADS, --threads THREADS
+                        number of TCP/UDP threads (default: 32)
+
 
 ## TODO:
 * signal handling
