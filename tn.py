@@ -20,11 +20,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--minport', type=int, default=1024,
-        help='lowest TCP/UDP port in range to listen on'
+        help='lowest TCP/UDP port in range to listen on (default: 1024)'
     )
     parser.add_argument(
         '--maxport', type=int, default=32768,
-        help='highest TCP/UDP port in range to listen on'
+        help='highest TCP/UDP port in range to listen on (default: 32768)'
     )
     parser.add_argument(
         '-b', '--bindaddr', default='0.0.0.0',
@@ -32,7 +32,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '-f', '--fin', default='store_false', type=bool,
-        help='Use 3-way/4-way FIN/ACK to teardown connections' + \
+        help='Use 3-way/4-way FIN/ACK to teardown connections' +
             ' (defaults to TCP RESET)'
     )
     parser.add_argument(
@@ -53,7 +53,7 @@ if __name__ == '__main__':
             tcp_reset=args.fin,
             bufsize=args.bufsize,
             udp_threads=args.threads,
-            tcp_threads=args.threads 
+            tcp_threads=args.threads
         )
         tn.run()
     except KeyboardInterrupt:
