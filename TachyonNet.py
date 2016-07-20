@@ -67,6 +67,7 @@ class TachyonNet:
         t.name = '_logger'
         t.daemon = True
         t.start()
+        print '[+] Logging to syslog, and directory: [%s]' % (self.logdir)
 
         self.start_tcp_threads()
         self.start_udp_threads()
@@ -135,6 +136,7 @@ class TachyonNet:
             t.name = '_tcp%02d' % (i)
             t.start()
             self.THREADLIST.append(t)
+        print '[+] %d TCP listener threads active.' % (self.tcp_threads)
         return
 
     def start_udp_threads(self):
@@ -150,6 +152,7 @@ class TachyonNet:
             t.name = '_udp%02d' % (i)
             t.start()
             self.THREADLIST.append(t)
+        print '[+] %d UDP listener threads active.' % (self.udp_threads)
         return
 
     def tcp_thread_main(self, portlist):

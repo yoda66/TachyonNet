@@ -57,7 +57,7 @@ if __name__ == '__main__':
         )
         tn.run()
     except KeyboardInterrupt:
-        print '\r[*] Keyboard Interrupt.  Exiting...'
+        print '\r[-] Keyboard Interrupt.  Exiting...'
         tn.stop()
     except Exception as e:
         print e
