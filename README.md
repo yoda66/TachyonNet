@@ -4,6 +4,11 @@ A project which will listen on all TCP/UDP ports, and log the first
 X number of bytes sent to the socket.   X is defined as 8192 bytes
 by default.
 
+    IMPORTANT: A default linux installation will not have
+    enough file descriptors allocated to open up
+    65535 * 2 (TCP and UDP) sockets.  Within Ubuntu/Debian,
+    see /etc/security/limits.conf file.
+
 A structured log format will be created.  The default logging
 directory is the home directory of the user who runs the program,
 following by ".tachyon_net" and then a date stamp based
