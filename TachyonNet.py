@@ -42,7 +42,14 @@ class TachyonNet:
         r_ports = self.maxport - self.minport
         r_nofile = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
         r_nofile_req = r_ports * 2.5
-        if r_nofile < r_nofile_req:
+        if r_ports < 0:
+            raise Exception(
+                '[-] Are you smoking something good?\n' +
+                '[-] Have you temporarily lost your nut?\n' +
+                '[-] You want to listen on a negative no. of ports?\n' +
+                '[-] maxport must be greater than the minport!!!'
+            )
+        elif r_nofile < r_nofile_req:
             raise Exception(
                 '[-] ERROR: INSUFFICIENT AVAILABLE FILE DESCRIPTORS.\n' +
                 '[-] Trying to listen on %d TCP/UDP ports.\n' % (r_ports) +
