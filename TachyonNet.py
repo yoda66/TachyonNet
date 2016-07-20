@@ -36,8 +36,10 @@ class TachyonNet:
         self.udp_threads = udp_threads
         self.logdir = logdir
         self.logfile = '%s/tn.log' % (self.logdir)
+        return
 
-        r_ports = maxport - minport
+    def run(self):
+        r_ports = self.maxport - self.minport
         r_nofile = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
         r_nofile_req = r_ports * 2.5
         if r_nofile < r_nofile_req:
@@ -69,15 +71,16 @@ class TachyonNet:
         self.start_tcp_threads()
         self.start_udp_threads()
 
-        try:
-            while not self.done:
-                time.sleep(10)
-        except KeyboardInterrupt:
-            self.done = True
+        # loops and waits
+        while not self.done:
+            time.sleep(10)
 
-        print '[+] Exiting...'
         for t in self.THREADLIST:
             t.join()
+        return
+
+    def stop(self):
+        self.done = True
         return
 
     def logger(self):
@@ -257,7 +260,4 @@ class TachyonNet:
             s.close()
 
 if __name__ == '__main__':
-    try:
-        TachyonNet(tcp_reset=True)
-    except Exception as e:
-        print e
+    print 'This is the module.  You need to import and use this.'
