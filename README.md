@@ -44,16 +44,19 @@ The file name itself consists of:
 
     optional arguments:
     -h, --help            show this help message and exit
-    --minport MINPORT     lowest TCP/UDP port in range to listen on
-    --maxport MAXPORT     highest TCP/UDP port in range to listen on
+    --minport MINPORT     lowest TCP/UDP port in range to listen on (default:
+                          1024)
+    --maxport MAXPORT     highest TCP/UDP port in range to listen on (default:
+                          32768)
     -b BINDADDR, --bindaddr BINDADDR
-                        IP address to bind/listen on (defaults to all)
-    -f FIN, --fin FIN     Use 3-way/4-way FIN/ACK to teardown connections
-                        (defaults to TCP RESET)
+                          IP address to bind/listen on (defaults to all)
+    -f, --fin             Use 3-way/4-way FIN/ACK to teardown connections
+                          (defaults to TCP RESET)
     --bufsize BUFSIZE     buffer size to capture traffic (default: 8192 bytes)
     -t THREADS, --threads THREADS
-                        number of TCP/UDP threads (default: 32)
-
+                          number of TCP/UDP threads (default: 32)
+    --notcp               do not open TCP sockets
+    --noudp               do not open UDP sockets
 
 ## TODO:
 * signal handling
