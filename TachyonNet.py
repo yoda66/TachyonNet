@@ -22,7 +22,8 @@ class TachyonNet:
 
     def __init__(self, bind_addr='0.0.0.0', minport=1024, maxport=32767,
                  timeout=500, tcp_reset=False, bufsize=8192, backlog=32,
-                 tcp_threads=32, udp_threads=32,
+                 tcp_threads=32, udp_threads=32, sleeptime=4,
+                 notcp=False, noudp=False,
                  logdir='%s/.tachyon_net' % (os.path.expanduser('~'))):
 
         self.bind_addr = bind_addr
@@ -34,11 +35,23 @@ class TachyonNet:
         self.backlog = backlog
         self.tcp_threads = tcp_threads
         self.udp_threads = udp_threads
+        self.sleeptime = sleeptime
+        self.notcp = notcp
+        self.noudp = noudp
         self.logdir = logdir
         self.logfile = '%s/tn.log' % (self.logdir)
+
+        # initialize some variables
+        self.lock = threading.Lock()
+        self.tcp_good = 0
+        self.tcp_bad = 0
+        self.udp_good = 0
+        self.udp_bad = 0
         return
 
     def run(self):
+
+        print '[+] Initializing...'
         r_ports = self.maxport - self.minport
         r_nofile = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
         r_nofile_req = r_ports * 2.5
@@ -58,6 +71,8 @@ class TachyonNet:
                 '[-] Modify /etc/security/limits.conf (Debian) ' +
                 'OR reduce the port count.'
             )
+        elif self.notcp and self.noudp:
+            raise Exception('[-] Seriously?')
 
         # open syslog
         syslog.openlog(
@@ -76,19 +91,34 @@ class TachyonNet:
         t.start()
         print '[+] Logging to syslog, and directory: [%s]' % (self.logdir)
 
-        self.start_tcp_threads()
-        self.start_udp_threads()
+        if not self.notcp:
+            print '[+] Opening %d TCP sockets from port %d to %d' % \
+                    (r_ports, self.minport, self.maxport - 1)
+            self.start_tcp_threads()
+            time.sleep(self.sleeptime)
+            print '[+] %d TCP sockets opened, %d failed.' % \
+                    (self.tcp_good, self.tcp_bad)
+
+        if not self.noudp:
+            print '[+] Opening %d UDP sockets from port %d to %d' % \
+                    (r_ports, self.minport, self.maxport - 1)
+            self.start_udp_threads()
+            time.sleep(self.sleeptime)
+            print '[+] %d UDP sockets opened, %d failed.' % \
+                    (self.udp_good, self.udp_bad)
+
+        print '[+] --<[ READY (CTRL-C to Exit) ]>--'
 
         # loops and waits
         while not self.done:
-            time.sleep(10)
-
-        for t in self.THREADLIST:
-            t.join()
+            time.sleep(self.sleeptime)
         return
 
     def stop(self):
+        print '\r[+] Terminating socket threads.'
         self.done = True
+        for t in self.THREADLIST:
+            t.join()
         return
 
     def logger(self):
@@ -173,8 +203,6 @@ class TachyonNet:
         return
 
     def bind_tcp_sockets(self, portlist):
-        good = 0
-        bad = 0
         mux = select.poll()
         for port in portlist:
             try:
@@ -191,16 +219,20 @@ class TachyonNet:
                 mux.register(s)
                 self.fd2sock[s.fileno()] = {'fileno': s, 'proto': 6}
                 self.ALLSOCKETS.append(s)
-                good += 1
+
+                self.lock.acquire()
+                self.tcp_good += 1
+                self.lock.release()
+
             except socket.error as e:
                 self.do_msglog('TCP: error binding port %d: %s' % (port, e))
-                bad += 1
+                self.lock.acquire()
+                self.tcp_bad += 1
+                self.lock.release()
                 continue
         return mux
 
     def bind_udp_sockets(self, portlist):
-        good = 0
-        bad = 0
         mux = select.poll()
         for port in portlist:
             try:
@@ -209,12 +241,16 @@ class TachyonNet:
                 mux.register(s)
                 self.fd2sock[s.fileno()] = {'fileno': s, 'proto': 17}
                 self.ALLSOCKETS.append(s)
-                good += 1
+                self.lock.acquire()
+                self.udp_good += 1
+                self.lock.release()
             except socket.error as e:
                 self.do_msglog(
                     'UDP: error binding port %d: %s' % (port, e)
                 )
-                bad += 1
+                self.lock.acquire()
+                self.udp_bad += 1
+                self.lock.release()
                 continue
         return mux
 

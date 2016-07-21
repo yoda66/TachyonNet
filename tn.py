@@ -31,7 +31,7 @@ if __name__ == '__main__':
         help='IP address to bind/listen on (defaults to all)'
     )
     parser.add_argument(
-        '-f', '--fin', default='store_false', type=bool,
+        '-f', '--fin', default=False, action='store_true',
         help='Use 3-way/4-way FIN/ACK to teardown connections' +
             ' (defaults to TCP RESET)'
     )
@@ -43,6 +43,14 @@ if __name__ == '__main__':
         '-t', '--threads', type=int, default=32,
         help='number of TCP/UDP threads (default: 32)'
     )
+    parser.add_argument(
+        '--notcp', default=False, action='store_true',
+        help='do not open TCP sockets'
+    )
+    parser.add_argument(
+        '--noudp', default=False, action='store_true',
+        help='do not open UDP sockets'
+    )
     args = parser.parse_args()
 
     try:
@@ -53,7 +61,9 @@ if __name__ == '__main__':
             tcp_reset=args.fin,
             bufsize=args.bufsize,
             udp_threads=args.threads,
-            tcp_threads=args.threads
+            tcp_threads=args.threads,
+            notcp=args.notcp,
+            noudp=args.noudp
         )
         tn.run()
     except KeyboardInterrupt:
