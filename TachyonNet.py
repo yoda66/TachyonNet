@@ -20,15 +20,23 @@ class TachyonNet:
     done = False
     LOGQ = Queue.Queue()
 
-    def __init__(self, bind_addr='0.0.0.0', minport=1024, maxport=32767,
-                 timeout=500, tcp_reset=False, bufsize=8192, backlog=32,
-                 tcp_threads=32, udp_threads=32, sleeptime=4,
+    def __init__(self, bind_addr='0.0.0.0',
+                 mintcp=1024, maxtcp=32768,
+                 minudp=1024, maxudp=32768,
+                 timeout=500, tcp_reset=False,
+                 bufsize=8192, backlog=32,
+                 tcp_threads=32, udp_threads=32,
                  notcp=False, noudp=False,
+                 sleeptime=4,
                  logdir='%s/.tachyon_net' % (os.path.expanduser('~'))):
 
         self.bind_addr = bind_addr
-        self.minport = minport
-        self.maxport = maxport
+
+        self.mintcp = mintcp
+        self.maxtcp = maxtcp
+        self.minudp = minudp
+        self.maxudp = maxudp
+
         self.timeout = timeout
         self.tcp_reset = tcp_reset
         self.bufsize = bufsize
@@ -52,10 +60,13 @@ class TachyonNet:
     def run(self):
 
         print '[+] Initializing...'
-        r_ports = self.maxport - self.minport
+        udp_ports = self.maxudp - self.minudp
+        tcp_ports = self.maxtcp - self.mintcp
+        r_ports = udp_ports + tcp_ports
+
         r_nofile = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
-        r_nofile_req = r_ports * 2.5
-        if r_ports < 0:
+        r_nofile_req = r_ports * 1.5
+        if udp_ports < 0 or tcp_ports < 0:
             raise Exception(
                 '[-] Are you smoking something good?\n' +
                 '[-] Have you temporarily lost your nut?\n' +
@@ -93,7 +104,7 @@ class TachyonNet:
 
         if not self.notcp:
             print '[+] Opening %d TCP sockets from port %d to %d' % \
-                    (r_ports, self.minport, self.maxport - 1)
+                    (tcp_ports, self.mintcp, self.maxtcp - 1)
             self.start_tcp_threads()
             time.sleep(self.sleeptime)
             print '[+] %d TCP sockets opened, %d failed.' % \
@@ -101,7 +112,7 @@ class TachyonNet:
 
         if not self.noudp:
             print '[+] Opening %d UDP sockets from port %d to %d' % \
-                    (r_ports, self.minport, self.maxport - 1)
+                    (udp_ports, self.minudp, self.maxudp - 1)
             self.start_udp_threads()
             time.sleep(self.sleeptime)
             print '[+] %d UDP sockets opened, %d failed.' % \
@@ -162,7 +173,7 @@ class TachyonNet:
 
     def start_tcp_threads(self):
         tcp_ports2thread = [[] for x in range(self.tcp_threads)]
-        for i in range(self.minport, self.maxport):
+        for i in range(self.mintcp, self.maxtcp):
             tcp_ports2thread[i % self.tcp_threads].append(i)
 
         for i in range(self.tcp_threads):
@@ -178,7 +189,7 @@ class TachyonNet:
 
     def start_udp_threads(self):
         udp_ports2thread = [[] for x in range(self.udp_threads)]
-        for i in range(self.minport, self.maxport):
+        for i in range(self.minudp, self.maxudp):
             udp_ports2thread[i % self.udp_threads].append(i)
 
         for i in range(self.udp_threads):

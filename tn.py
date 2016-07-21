@@ -19,21 +19,24 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--minport', type=int, default=1024,
-        help='lowest TCP/UDP port in range to listen on (default: 1024)'
-    )
-    parser.add_argument(
-        '--maxport', type=int, default=32768,
-        help='highest TCP/UDP port in range to listen on (default: 32768)'
-    )
-    parser.add_argument(
         '-b', '--bindaddr', default='0.0.0.0',
         help='IP address to bind/listen on (defaults to all)'
     )
     parser.add_argument(
-        '-f', '--fin', default=False, action='store_true',
-        help='Use 3-way/4-way FIN/ACK to teardown connections' +
-            ' (defaults to TCP RESET)'
+        '--mintcp', type=int, default=1024,
+        help='lowest TCP port in range to listen on (default: 1024)'
+    )
+    parser.add_argument(
+        '--maxtcp', type=int, default=32768,
+        help='highest TCP port in range to listen on (default: 32768)'
+    )
+    parser.add_argument(
+        '--minudp', type=int, default=1024,
+        help='lowest UDP port in range to listen on (default: 1024)'
+    )
+    parser.add_argument(
+        '--maxudp', type=int, default=32768,
+        help='highest UDP port in range to listen on (default: 32768)'
     )
     parser.add_argument(
         '--bufsize', type=int, default=8192,
@@ -51,12 +54,19 @@ if __name__ == '__main__':
         '--noudp', default=False, action='store_true',
         help='do not open UDP sockets'
     )
+    parser.add_argument(
+        '-f', '--fin', default=False, action='store_true',
+        help='Use 3-way/4-way FIN/ACK to teardown connections' +
+            ' (defaults to TCP RESET)'
+    )
     args = parser.parse_args()
 
     try:
         tn = TachyonNet.TachyonNet(
-            minport=args.minport,
-            maxport=args.maxport,
+            mintcp=args.mintcp,
+            maxtcp=args.maxtcp,
+            minudp=args.minudp,
+            maxudp=args.maxudp,
             bind_addr=args.bindaddr,
             tcp_reset=args.fin,
             bufsize=args.bufsize,
