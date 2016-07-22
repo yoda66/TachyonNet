@@ -62,4 +62,5 @@ The file name itself consists of:
 
 ## TODO:
 * signal handling
+* self-forking daemon mode
 
