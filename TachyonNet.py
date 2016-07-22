@@ -8,13 +8,14 @@ import time
 import threading
 import syslog
 import os
+import re
+import sys
 import Queue
 from datetime import datetime
 
 
 class TachyonNet:
 
-    THREADLIST = []
     ALLSOCKETS = []
     fd2sock = {}
     done = False
@@ -55,11 +56,15 @@ class TachyonNet:
         self.tcp_bad = 0
         self.udp_good = 0
         self.udp_bad = 0
+        self.tcp_connects = 0
+        self.udp_connects = 0
+        self.tcp_bytes = 0
+        self.udp_bytes = 0
         return
 
     def run(self):
 
-        print '[+] Initializing...'
+        print '[+] --< Initializing >--'
         udp_ports = self.maxudp - self.minudp
         tcp_ports = self.maxtcp - self.mintcp
         r_ports = udp_ports + tcp_ports
@@ -104,32 +109,43 @@ class TachyonNet:
 
         if not self.notcp:
             print '[+] Opening %d TCP sockets from port %d to %d' % \
-                    (tcp_ports, self.mintcp, self.maxtcp - 1)
+                  (tcp_ports, self.mintcp, self.maxtcp - 1)
             self.start_tcp_threads()
             time.sleep(self.sleeptime)
             print '[+] %d TCP sockets opened, %d failed.' % \
-                    (self.tcp_good, self.tcp_bad)
+                  (self.tcp_good, self.tcp_bad)
 
         if not self.noudp:
             print '[+] Opening %d UDP sockets from port %d to %d' % \
-                    (udp_ports, self.minudp, self.maxudp - 1)
+                  (udp_ports, self.minudp, self.maxudp - 1)
             self.start_udp_threads()
             time.sleep(self.sleeptime)
             print '[+] %d UDP sockets opened, %d failed.' % \
-                    (self.udp_good, self.udp_bad)
-
-        print '[+] --<[ READY (CTRL-C to Exit) ]>--'
+                  (self.udp_good, self.udp_bad)
 
         # loops and waits
+        i = 0
+        spinner = '/-\|'
         while not self.done:
-            time.sleep(self.sleeptime)
+            print '\r[+] --< \x1b[1mListening \x1b[30m' + \
+                  ' [ tcp:\x1b[32m%4d/%-6d\x1b[30m |' % \
+                  (self.tcp_connects, self.tcp_bytes) + \
+                  ' udp:\x1b[31m%4d/%-6d\x1b[30m ]' % \
+                  (self.udp_connects, self.udp_bytes) + \
+                  ' (%s)\x1b[0m >--%s' % (
+                      spinner[i % len(spinner)], 6 * '\x08'
+                  ),
+            sys.stdout.flush()
+            time.sleep(self.sleeptime / 4)
+            i += 1
         return
 
     def stop(self):
-        print '\r[+] Terminating socket threads.'
         self.done = True
-        for t in self.THREADLIST:
-            t.join()
+        print '\r[+] Terminating socket threads...'
+        for t in threading.enumerate():
+            if re.match(r'_(tdp|udp)\d{1,}', t.name):
+                t.join()
         return
 
     def logger(self):
@@ -183,7 +199,6 @@ class TachyonNet:
             )
             t.name = '_tcp%02d' % (i)
             t.start()
-            self.THREADLIST.append(t)
         print '[+] %d TCP listener threads active.' % (self.tcp_threads)
         return
 
@@ -199,7 +214,6 @@ class TachyonNet:
             )
             t.name = '_udp%02d' % (i)
             t.start()
-            self.THREADLIST.append(t)
         print '[+] %d UDP listener threads active.' % (self.udp_threads)
         return
 
@@ -292,9 +306,17 @@ class TachyonNet:
                 cs, client_addr = s.accept()
                 data = cs.recv(self.bufsize)
                 cs.close()
+                self.lock.acquire()
+                self.tcp_connects += 1
+                self.tcp_bytes += len(data)
+                self.lock.release()
             elif proto == 17:
                 sproto = 'UDP'
                 data, client_addr = s.recvfrom(self.bufsize)
+                self.lock.acquire()
+                self.udp_connects += 1
+                self.udp_bytes += len(data)
+                self.lock.release()
 
             self.do_msglog(
                 '%s: %s:%d -> %s:%d: %d bytes read.' %
