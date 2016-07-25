@@ -39,7 +39,7 @@ The file name itself consists of:
     [*]  Black Hills Information Security
     [*] ======================================
 
-    usage: tn.py [-h] [--minport MINPORT] [--maxport MAXPORT] [-b BINDADDR]
+    usage: tn [-h] [--minport MINPORT] [--maxport MAXPORT] [-b BINDADDR]
              [-f FIN] [--bufsize BUFSIZE] [-t THREADS]
 
     optional arguments:
