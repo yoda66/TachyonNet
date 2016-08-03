@@ -111,33 +111,44 @@ class TachyonNet:
         )
 
         if not self.notcp:
-            self._myprint('[+] Opening %d TCP sockets from port %d to %d' % \
-                  (tcp_ports, self.mintcp, self.maxtcp - 1))
+            self._myprint(
+                '[+] Opening %d TCP sockets from port %d to %d' %
+                (tcp_ports, self.mintcp, self.maxtcp - 1)
+            )
             self.start_tcp_threads()
             time.sleep(self.sleeptime)
-            self._myprint('[+] %d TCP sockets opened, %d failed.' % \
-                  (self.tcp_good, self.tcp_bad))
+            self._myprint(
+                '[+] %d TCP sockets opened, %d failed.' %
+                (self.tcp_good, self.tcp_bad)
+            )
 
         if not self.noudp:
-            self._myprint('[+] Opening %d UDP sockets from port %d to %d' % \
-                  (udp_ports, self.minudp, self.maxudp - 1))
+            self._myprint(
+                '[+] Opening %d UDP sockets from port %d to %d' %
+                (udp_ports, self.minudp, self.maxudp - 1)
+            )
             self.start_udp_threads()
             time.sleep(self.sleeptime)
-            self._myprint('[+] %d UDP sockets opened, %d failed.' % \
-                  (self.udp_good, self.udp_bad))
+            self._myprint(
+                '[+] %d UDP sockets opened, %d failed.' %
+                (self.udp_good, self.udp_bad)
+            )
 
         # loops and waits
         i = 0
         spinner = '/-\|'
         while not self.done:
-            self._myprint('\r[+] --< \x1b[1mListening \x1b[30m' + \
-                  ' [ tcp:\x1b[32m%4d/%-6d\x1b[30m |' % \
-                  (self.tcp_connects, self.tcp_bytes) + \
-                  ' udp:\x1b[31m%4d/%-6d\x1b[30m ]' % \
-                  (self.udp_connects, self.udp_bytes) + \
-                  ' (%s)\x1b[0m >--%s' % (
-                      spinner[i % len(spinner)], 6 * '\x08'
-                  ), LF=False)
+            self._myprint(
+                '\r[+] --< \x1b[1mListening \x1b[30m' +
+                ' [ tcp:\x1b[32m%4d/%-6d\x1b[30m |' %
+                (self.tcp_connects, self.tcp_bytes) +
+                ' udp:\x1b[31m%4d/%-6d\x1b[30m ]' %
+                (self.udp_connects, self.udp_bytes) +
+                ' (%s)\x1b[0m >--%s' % (
+                    spinner[i % len(spinner)], 6 * '\x08'
+                ),
+                LF=False
+            )
             time.sleep(self.sleeptime / 4)
             i += 1
         return

@@ -3,6 +3,7 @@
 import argparse
 import os
 import sys
+import signal
 from tachyon import TachyonNet
 
 
@@ -87,6 +88,9 @@ if __name__ == '__main__':
             daemon=args.daemon
         )
 
+        def sigterm_handler(signum, frame):
+            tn.stop()
+
         if args.daemon:
             pid = os.fork()
             if pid > 0:
@@ -97,6 +101,7 @@ if __name__ == '__main__':
                 except Exception as e:
                     print '[+] Warning: could not write pidfile: %s' % (e)
                 sys.exit(0)
+            signal.signal(signal.SIGTERM, sigterm_handler)
 
         # run threaded socket code
         tn.run()
