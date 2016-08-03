@@ -61,7 +61,5 @@ The file name itself consists of:
                           (defaults to TCP RESET)
 
 ## TODO:
-* signal handling
-* self-forking daemon mode
-* syslog 
+* syslog levels
 
