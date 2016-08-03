@@ -28,7 +28,7 @@ class TachyonNet:
                  bufsize=8192, backlog=32,
                  tcp_threads=32, udp_threads=32,
                  notcp=False, noudp=False,
-                 sleeptime=4,
+                 sleeptime=4, daemon=False,
                  logdir='%s/.tachyon_net' % (os.path.expanduser('~'))):
 
         self.bind_addr = bind_addr
@@ -47,6 +47,7 @@ class TachyonNet:
         self.sleeptime = sleeptime
         self.notcp = notcp
         self.noudp = noudp
+        self.daemon = daemon
         self.logdir = logdir
         self.logfile = '%s/tn.log' % (self.logdir)
 
@@ -64,7 +65,7 @@ class TachyonNet:
 
     def run(self):
 
-        print '[+] --< Initializing >--'
+        self._myprint('[+] --< Initializing >--')
         udp_ports = self.maxudp - self.minudp
         tcp_ports = self.maxtcp - self.mintcp
         r_ports = udp_ports + tcp_ports
@@ -105,47 +106,56 @@ class TachyonNet:
         t.name = '_logger'
         t.daemon = True
         t.start()
-        print '[+] Logging to syslog, and directory: [%s]' % (self.logdir)
+        self._myprint(
+            '[+] Logging to syslog, and directory: [%s]' % (self.logdir)
+        )
 
         if not self.notcp:
-            print '[+] Opening %d TCP sockets from port %d to %d' % \
-                  (tcp_ports, self.mintcp, self.maxtcp - 1)
+            self._myprint('[+] Opening %d TCP sockets from port %d to %d' % \
+                  (tcp_ports, self.mintcp, self.maxtcp - 1))
             self.start_tcp_threads()
             time.sleep(self.sleeptime)
-            print '[+] %d TCP sockets opened, %d failed.' % \
-                  (self.tcp_good, self.tcp_bad)
+            self._myprint('[+] %d TCP sockets opened, %d failed.' % \
+                  (self.tcp_good, self.tcp_bad))
 
         if not self.noudp:
-            print '[+] Opening %d UDP sockets from port %d to %d' % \
-                  (udp_ports, self.minudp, self.maxudp - 1)
+            self._myprint('[+] Opening %d UDP sockets from port %d to %d' % \
+                  (udp_ports, self.minudp, self.maxudp - 1))
             self.start_udp_threads()
             time.sleep(self.sleeptime)
-            print '[+] %d UDP sockets opened, %d failed.' % \
-                  (self.udp_good, self.udp_bad)
+            self._myprint('[+] %d UDP sockets opened, %d failed.' % \
+                  (self.udp_good, self.udp_bad))
 
         # loops and waits
         i = 0
         spinner = '/-\|'
         while not self.done:
-            print '\r[+] --< \x1b[1mListening \x1b[30m' + \
+            self._myprint('\r[+] --< \x1b[1mListening \x1b[30m' + \
                   ' [ tcp:\x1b[32m%4d/%-6d\x1b[30m |' % \
                   (self.tcp_connects, self.tcp_bytes) + \
                   ' udp:\x1b[31m%4d/%-6d\x1b[30m ]' % \
                   (self.udp_connects, self.udp_bytes) + \
                   ' (%s)\x1b[0m >--%s' % (
                       spinner[i % len(spinner)], 6 * '\x08'
-                  ),
-            sys.stdout.flush()
+                  ), LF=False)
             time.sleep(self.sleeptime / 4)
             i += 1
         return
 
     def stop(self):
         self.done = True
-        print '\r[+] Terminating socket threads...'
+        self._myprint('\r[+] Terminating socket threads...')
         for t in threading.enumerate():
             if re.match(r'_(tdp|udp)\d{1,}', t.name):
                 t.join()
+        return
+
+    def _myprint(self, msg, LF=True):
+        if not self.daemon:
+            sys.stdout.write(msg)
+            if LF:
+                sys.stdout.write('\r\n')
+            sys.stdout.flush()
         return
 
     def logger(self):
@@ -199,7 +209,9 @@ class TachyonNet:
             )
             t.name = '_tcp%02d' % (i)
             t.start()
-        print '[+] %d TCP listener threads active.' % (self.tcp_threads)
+        self._myprint(
+            '[+] %d TCP listener threads active.' % (self.tcp_threads)
+        )
         return
 
     def start_udp_threads(self):
@@ -214,7 +226,9 @@ class TachyonNet:
             )
             t.name = '_udp%02d' % (i)
             t.start()
-        print '[+] %d UDP listener threads active.' % (self.udp_threads)
+        self._myprint(
+            '[+] %d UDP listener threads active.' % (self.udp_threads)
+        )
         return
 
     def tcp_thread_main(self, portlist):

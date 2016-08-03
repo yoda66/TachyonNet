@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import argparse
+import os
+import sys
 from tachyon import TachyonNet
 
 
@@ -57,7 +59,15 @@ if __name__ == '__main__':
     parser.add_argument(
         '-f', '--fin', default=False, action='store_true',
         help='Use 3-way/4-way FIN/ACK to teardown connections' +
-            ' (defaults to TCP RESET)'
+             ' (defaults to TCP RESET)'
+    )
+    parser.add_argument(
+        '--pidfile', default='tn.pid',
+        help='filename to write process id file to (default: tn.pid)'
+    )
+    parser.add_argument(
+        '-D', '--daemon', default=False, action='store_true',
+        help='run in daemon mode'
     )
     args = parser.parse_args()
 
@@ -73,11 +83,27 @@ if __name__ == '__main__':
             udp_threads=args.threads,
             tcp_threads=args.threads,
             notcp=args.notcp,
-            noudp=args.noudp
+            noudp=args.noudp,
+            daemon=args.daemon
         )
+
+        if args.daemon:
+            pid = os.fork()
+            if pid > 0:
+                try:
+                    f = open(args.pidfile, 'w')
+                    f.write('%d\n' % (pid))
+                    f.close()
+                except Exception as e:
+                    print '[+] Warning: could not write pidfile: %s' % (e)
+                sys.exit(0)
+
+        # run threaded socket code
         tn.run()
+
     except KeyboardInterrupt:
         print '\r[-] Keyboard Interrupt.  Exiting...'
         tn.stop()
+
     except Exception as e:
         print e
