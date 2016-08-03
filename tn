@@ -70,6 +70,21 @@ if __name__ == '__main__':
         '-D', '--daemon', default=False, action='store_true',
         help='run in daemon mode'
     )
+    parser.add_argument(
+        '--syslog-facility', default='user',
+        choices=[
+            'user', 'syslog', 'daemon', 'local0', 'local1',
+            'local2', 'local3', 'local4',
+            'local5', 'local6', 'local7'
+        ]
+    )
+    parser.add_argument(
+        '--syslog-level', default='info',
+        choices=[
+            'debug', 'info', 'notice', 'warning', 'err',
+            'crit', 'alert', 'emerg'
+        ]
+    )
     args = parser.parse_args()
 
     try:
@@ -85,7 +100,9 @@ if __name__ == '__main__':
             tcp_threads=args.threads,
             notcp=args.notcp,
             noudp=args.noudp,
-            daemon=args.daemon
+            daemon=args.daemon,
+            syslog_facility=args.syslog_facility,
+            syslog_level=args.syslog_level
         )
 
         def sigterm_handler(signum, frame):
