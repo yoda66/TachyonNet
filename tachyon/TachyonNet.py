@@ -65,16 +65,14 @@ class TachyonNet:
         self.logdir = logdir
         self.logfile = '%s/tn.log' % (self.logdir)
 
-        # initialize some variables
+        # global locking object
         self.lock = threading.Lock()
-        self.tcp_good = 0
-        self.tcp_bad = 0
-        self.udp_good = 0
-        self.udp_bad = 0
-        self.tcp_connects = 0
-        self.udp_connects = 0
-        self.tcp_bytes = 0
-        self.udp_bytes = 0
+
+        # counters
+        self.tcp_good = self.udp_good = self.icmp_good = 0
+        self.tcp_bad = self.udp_bad = self.icmp_bad = 0
+        self.tcp_connects = self.udp_connects = self.icmp_connects = 0
+        self.tcp_bytes = self.udp_bytes = self.icmp_bytes = 0
         return
 
     def run(self):
@@ -108,7 +106,7 @@ class TachyonNet:
         # open syslog
         syslog.openlog(
             logoption=syslog.LOG_PID,
-            facility=self.SF[self.syslog_facility] | self.SL[self.syslog_level]
+            facility=self.SF[self.syslog_facility]
         )
 
         # check logdir
@@ -148,6 +146,13 @@ class TachyonNet:
                 (self.udp_good, self.udp_bad)
             )
 
+        self.start_icmp_thread()
+        time.sleep(self.sleeptime)
+        self._myprint(
+            '[+] %d ICMP socket(s) opened, %d failed.' %
+            (self.icmp_good, self.icmp_bad)
+        )
+
         # loops and waits
         i = 0
         spinner = '/-\|'
@@ -156,8 +161,10 @@ class TachyonNet:
                 '\r[+] --< \x1b[1mListening \x1b[30m' +
                 ' [ tcp:\x1b[32m%4d/%-6d\x1b[30m |' %
                 (self.tcp_connects, self.tcp_bytes) +
-                ' udp:\x1b[31m%4d/%-6d\x1b[30m ]' %
+                ' udp:\x1b[31m%4d/%-6d\x1b[30m |' %
                 (self.udp_connects, self.udp_bytes) +
+                ' icmp:\x1b[31m%4d/%-6d\x1b[30m ]' %
+                (self.icmp_connects, self.icmp_bytes) +
                 ' (%s)\x1b[0m >--%s' % (
                     spinner[i % len(spinner)], 6 * '\x08'
                 ),
@@ -188,7 +195,10 @@ class TachyonNet:
         while True:
             d = self.LOGQ.get()
             if d[0] == 'msg':
-                syslog.syslog(d[1])
+                syslog.syslog(
+                    self.SL[self.syslog_level],
+                    d[1]
+                )
                 now = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
                 lf.write('%s: %s\n' % (now, d[1]))
                 lf.flush()
@@ -211,7 +221,7 @@ class TachyonNet:
             directory, proto.lower(),
             src[0], src[1], dst[0], dst[1]
         )
-        f = open(filename, 'w')
+        f = open(filename, 'ab')
         f.write(data)
         f.close()
         return
@@ -256,14 +266,30 @@ class TachyonNet:
         )
         return
 
+    def start_icmp_thread(self):
+        t = threading.Thread(
+            target=self.icmp_thread_main
+        )
+        t.name = '_icmp01'
+        t.start()
+        self._myprint(
+            '[+] ICMP listener thread active.'
+        )
+        return
+
     def tcp_thread_main(self, portlist):
         mux = self.bind_tcp_sockets(portlist)
-        self.tcp_connections(mux)
+        self.tcp_poll(mux)
         return
 
     def udp_thread_main(self, portlist):
         mux = self.bind_udp_sockets(portlist)
-        self.udp_connections(mux)
+        self.udp_poll(mux)
+        return
+
+    def icmp_thread_main(self):
+        mux = self.bind_icmp_socket()
+        self.icmp_poll(mux)
         return
 
     def bind_tcp_sockets(self, portlist):
@@ -318,7 +344,30 @@ class TachyonNet:
                 continue
         return mux
 
-    def tcp_connections(self, mux):
+    def bind_icmp_socket(self):
+        mux = select.poll()
+        try:
+            s = socket.socket(
+                socket.AF_INET, socket.SOCK_RAW,
+                socket.IPPROTO_ICMP
+            )
+            s.bind((self.bind_addr, 0))
+            mux.register(s)
+            self.fd2sock[s.fileno()] = {'fileno': s, 'proto': 1}
+            self.ALLSOCKETS.append(s)
+            self.lock.acquire()
+            self.icmp_good += 1
+            self.lock.release()
+        except socket.error as e:
+            self.do_msglog(
+                'ICMP: error binding: %s' % (e)
+            )
+            self.lock.acquire()
+            self.icmp_bad += 1
+            self.lock.release()
+        return mux
+
+    def tcp_poll(self, mux):
         while not self.done:
             ready = mux.poll(self.timeout)
             for fd, event in ready:
@@ -326,13 +375,21 @@ class TachyonNet:
                     self.read_data(fd)
         return
 
-    def udp_connections(self, mux):
+    def udp_poll(self, mux):
         while not self.done:
             ready = mux.poll()
             for fd, event in ready:
                 if event & select.POLLIN:
                     self.read_data(fd)
             time.sleep(self.timeout / 1000.0)
+        return
+
+    def icmp_poll(self, mux):
+        while not self.done:
+            ready = mux.poll(self.timeout)
+            for fd, event in ready:
+                if event & select.POLLIN:
+                    self.read_data(fd)
         return
 
     def read_data(self, fd):
@@ -355,6 +412,13 @@ class TachyonNet:
                 self.lock.acquire()
                 self.udp_connects += 1
                 self.udp_bytes += len(data)
+                self.lock.release()
+            elif proto == 1:
+                sproto = 'ICMP'
+                data, client_addr = s.recvfrom(self.bufsize)
+                self.lock.acquire()
+                self.icmp_connects += 1
+                self.icmp_bytes += len(data)
                 self.lock.release()
 
             self.do_msglog(
