@@ -34,29 +34,34 @@ The file name itself consists of:
 ## Usage
 
     [*] ======================================
-    [*]  TachyonNet Version 20160720_1.0
+    [*]  TachyonNet Version 20160808_1.1
     [*]  Author: Joff Thyer (c) 2016
     [*]  Black Hills Information Security
     [*] ======================================
 
-    usage: tn [-h] [--minport MINPORT] [--maxport MAXPORT] [-b BINDADDR]
-             [-f FIN] [--bufsize BUFSIZE] [-t THREADS]
+    usage: tn [-h] [-b BINDADDR] [--mintcp MINTCP] [--maxtcp MAXTCP]
+          [--minudp MINUDP] [--maxudp MAXUDP] [--bufsize BUFSIZE] [-t THREADS]
+          [--notcp] [--noudp] [--noicmp] [-f] [--pidfile PIDFILE] [-D]
+          [--syslog-facility {user,syslog,daemon,local0,local1,local2,local3,local4,local5,local6,local7}]
 
     optional arguments:
-    -h, --help            show this help message and exit
-    -b BINDADDR, --bindaddr BINDADDR
-                          IP address to bind/listen on (defaults to all)
-    --mintcp MINTCP       lowest TCP port in range to listen on (default: 1024)
-    --maxtcp MAXTCP       highest TCP port in range to listen on (default:
-                          32768)
-    --minudp MINUDP       lowest UDP port in range to listen on (default: 1024)
-    --maxudp MAXUDP       highest UDP port in range to listen on (default:
-                          32768)
-    --bufsize BUFSIZE     buffer size to capture traffic (default: 8192 bytes)
-    -t THREADS, --threads THREADS
-                          number of TCP/UDP threads (default: 32)
-    --notcp               do not open TCP sockets
-    --noudp               do not open UDP sockets
-    -f, --fin             Use 3-way/4-way FIN/ACK to teardown connections
-                          (defaults to TCP RESET)
-
+      -h, --help            show this help message and exit
+      -b BINDADDR, --bindaddr BINDADDR
+                            IP address to bind/listen on (defaults to all)
+      --mintcp MINTCP       lowest TCP port in range to listen on (default: 1024)
+      --maxtcp MAXTCP       highest TCP port in range to listen on (default:
+                            32768)
+      --minudp MINUDP       lowest UDP port in range to listen on (default: 1024)
+      --maxudp MAXUDP       highest UDP port in range to listen on (default:
+                            32768)
+      --bufsize BUFSIZE     buffer size to capture traffic (default: 8192 bytes)
+      -t THREADS, --threads THREADS
+                            number of TCP/UDP threads (default: 32)
+      --notcp               do not open TCP sockets
+      --noudp               do not open UDP sockets
+      --noicmp              do not open ICMP socket
+      -f, --fin             Use 3-way/4-way FIN/ACK to teardown connections
+                            (defaults to TCP RESET)
+      --pidfile PIDFILE     filename to write process id file to (default: tn.pid)
+      -D, --daemon          run in daemon mode
+      --syslog-facility     {user,syslog,daemon,local0,local1,local2,local3,local4,local5,local6,local7}
