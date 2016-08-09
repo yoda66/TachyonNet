@@ -378,10 +378,11 @@ class TachyonNet:
 
     def icmp_poll(self, mux):
         while not self.done:
-            ready = mux.poll(self.timeout)
+            ready = mux.poll()
             for fd, event in ready:
                 if event & select.POLLIN:
                     self.read_data(fd)
+            time.sleep(self.timeout / 1000.0)
         return
 
     def read_data(self, fd):
