@@ -58,6 +58,10 @@ if __name__ == '__main__':
         help='do not open UDP sockets'
     )
     parser.add_argument(
+        '--noicmp', default=False, action='store_true',
+        help='do not open ICMP socket'
+    )
+    parser.add_argument(
         '-f', '--fin', default=False, action='store_true',
         help='Use 3-way/4-way FIN/ACK to teardown connections' +
              ' (defaults to TCP RESET)'
@@ -100,6 +104,7 @@ if __name__ == '__main__':
             tcp_threads=args.threads,
             notcp=args.notcp,
             noudp=args.noudp,
+            noicmp=args.noicmp,
             daemon=args.daemon,
             syslog_facility=args.syslog_facility,
             syslog_level=args.syslog_level

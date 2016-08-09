@@ -39,7 +39,7 @@ class TachyonNet:
                  mintcp=1024, maxtcp=32768, minudp=1024, maxudp=32768,
                  timeout=500, tcp_reset=False, bufsize=8192, backlog=32,
                  tcp_threads=32, udp_threads=32, notcp=False, noudp=False,
-                 sleeptime=4, daemon=False,
+                 noicmp=False, sleeptime=4, daemon=False,
                  syslog_facility='user', syslog_level='info',
                  logdir='%s/.tachyon_net' % (os.path.expanduser('~'))):
 
@@ -59,6 +59,7 @@ class TachyonNet:
         self.sleeptime = sleeptime
         self.notcp = notcp
         self.noudp = noudp
+        self.noicmp = noicmp
         self.daemon = daemon
         self.syslog_facility = syslog_facility
         self.syslog_level = syslog_level
@@ -100,7 +101,7 @@ class TachyonNet:
                 '[-] Modify /etc/security/limits.conf (Debian) ' +
                 'OR reduce the port count.'
             )
-        elif self.notcp and self.noudp:
+        elif self.notcp and self.noudp and self.noicmp:
             raise Exception('[-] Seriously?')
 
         # open syslog
@@ -146,12 +147,13 @@ class TachyonNet:
                 (self.udp_good, self.udp_bad)
             )
 
-        self.start_icmp_thread()
-        time.sleep(self.sleeptime)
-        self._myprint(
-            '[+] %d ICMP socket(s) opened, %d failed.' %
-            (self.icmp_good, self.icmp_bad)
-        )
+        if not self.noicmp:
+            self.start_icmp_thread()
+            time.sleep(self.sleeptime)
+            self._myprint(
+                '[+] %d ICMP socket(s) opened, %d failed.' %
+                (self.icmp_good, self.icmp_bad)
+            )
 
         # loops and waits
         i = 0
