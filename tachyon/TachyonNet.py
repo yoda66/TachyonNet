@@ -119,7 +119,7 @@ class TachyonNet:
         if not self.notcp:
             self._myprint(
                 '[+] Opening %d TCP sockets from port %d to %d' %
-                (tcp_ports, self.mintcp, self.maxtcp - 1)
+                (tcp_ports, self.mintcp, self.maxtcp)
             )
             self.start_tcp_threads()
             time.sleep(self.sleeptime)
@@ -131,7 +131,7 @@ class TachyonNet:
         if not self.noudp:
             self._myprint(
                 '[+] Opening %d UDP sockets from port %d to %d' %
-                (udp_ports, self.minudp, self.maxudp - 1)
+                (udp_ports, self.minudp, self.maxudp)
             )
             self.start_udp_threads()
             time.sleep(self.sleeptime)
