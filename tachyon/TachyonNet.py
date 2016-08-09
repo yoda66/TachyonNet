@@ -226,7 +226,7 @@ class TachyonNet:
 
     def start_tcp_threads(self):
         tcp_ports2thread = [[] for x in range(self.tcp_threads)]
-        for i in range(self.mintcp, self.maxtcp):
+        for i in range(self.mintcp, self.maxtcp + 1):
             tcp_ports2thread[i % self.tcp_threads].append(i)
 
         for i in range(self.tcp_threads):
@@ -243,7 +243,7 @@ class TachyonNet:
 
     def start_udp_threads(self):
         udp_ports2thread = [[] for x in range(self.udp_threads)]
-        for i in range(self.minudp, self.maxudp):
+        for i in range(self.minudp, self.maxudp + 1):
             udp_ports2thread[i % self.udp_threads].append(i)
 
         for i in range(self.udp_threads):
