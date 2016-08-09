@@ -28,19 +28,13 @@ class TachyonNet:
         'local4': syslog.LOG_LOCAL4, 'local5': syslog.LOG_LOCAL5,
         'local6': syslog.LOG_LOCAL6, 'local7': syslog.LOG_LOCAL7
     }
-    SL = {
-        'debug': syslog.LOG_DEBUG, 'info': syslog.LOG_INFO,
-        'notice': syslog.LOG_NOTICE, 'warning': syslog.LOG_WARNING,
-        'err': syslog.LOG_ERR, 'crit': syslog.LOG_CRIT,
-        'alert': syslog.LOG_ALERT, 'emerg': syslog.LOG_EMERG
-    }
 
     def __init__(self, bind_addr='0.0.0.0',
                  mintcp=1024, maxtcp=32768, minudp=1024, maxudp=32768,
                  timeout=500, tcp_reset=False, bufsize=8192, backlog=32,
                  tcp_threads=32, udp_threads=32, notcp=False, noudp=False,
                  noicmp=False, sleeptime=4, daemon=False,
-                 syslog_facility='user', syslog_level='info',
+                 syslog_facility='user',
                  logdir='%s/.tachyon_net' % (os.path.expanduser('~'))):
 
         self.bind_addr = bind_addr
@@ -62,7 +56,6 @@ class TachyonNet:
         self.noicmp = noicmp
         self.daemon = daemon
         self.syslog_facility = syslog_facility
-        self.syslog_level = syslog_level
         self.logdir = logdir
         self.logfile = '%s/tn.log' % (self.logdir)
 
@@ -197,10 +190,7 @@ class TachyonNet:
         while True:
             d = self.LOGQ.get()
             if d[0] == 'msg':
-                syslog.syslog(
-                    self.SL[self.syslog_level],
-                    d[1]
-                )
+                syslog.syslog(d[1])
                 now = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
                 lf.write('%s: %s\n' % (now, d[1]))
                 lf.flush()

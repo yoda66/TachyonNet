@@ -60,6 +60,3 @@ The file name itself consists of:
     -f, --fin             Use 3-way/4-way FIN/ACK to teardown connections
                           (defaults to TCP RESET)
 
-## TODO:
-* syslog levels
-

@@ -9,7 +9,7 @@ from tachyon import TachyonNet
 
 if __name__ == '__main__':
     AUTHOR = 'Joff Thyer'
-    VERSION = '20160720_1.0'
+    VERSION = '20160808_1.1'
     SPONSOR = 'Black Hills Information Security'
 
     print """\
@@ -82,13 +82,6 @@ if __name__ == '__main__':
             'local5', 'local6', 'local7'
         ]
     )
-    parser.add_argument(
-        '--syslog-level', default='info',
-        choices=[
-            'debug', 'info', 'notice', 'warning', 'err',
-            'crit', 'alert', 'emerg'
-        ]
-    )
     args = parser.parse_args()
 
     try:
@@ -106,8 +99,7 @@ if __name__ == '__main__':
             noudp=args.noudp,
             noicmp=args.noicmp,
             daemon=args.daemon,
-            syslog_facility=args.syslog_facility,
-            syslog_level=args.syslog_level
+            syslog_facility=args.syslog_facility
         )
 
         def sigterm_handler(signum, frame):
