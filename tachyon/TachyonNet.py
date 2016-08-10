@@ -152,6 +152,16 @@ class TachyonNet:
         i = 0
         spinner = '/-\|'
         while not self.done:
+            if not i % 300:
+                self.do_msglog(
+                    'tachyon stats tcp:%d|%d, udp:%d|%d, icmp:%d|%d' %
+                    (
+                        self.tcp_connects, self.tcp_bytes,
+                        self.udp_connects, self.udp_bytes,
+                        self.icmp_connects, self.icmp_bytes
+                    )
+                )
+
             self._myprint(
                 '\r[+] --< \x1b[1mListening \x1b[30m' +
                 ' [ tcp:\x1b[32m%4d/%-6d\x1b[30m |' %
