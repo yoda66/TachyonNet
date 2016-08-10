@@ -31,7 +31,7 @@ class TachyonNet:
 
     def __init__(self, bind_addr='0.0.0.0',
                  mintcp=1024, maxtcp=32768, minudp=1024, maxudp=32768,
-                 timeout=500, tcp_reset=False, bufsize=8192, backlog=32,
+                 timeout=1000, tcp_reset=False, bufsize=8192, backlog=32,
                  tcp_threads=32, udp_threads=32, notcp=False, noudp=False,
                  noicmp=False, sleeptime=4, daemon=False,
                  syslog_facility='user',
@@ -361,7 +361,7 @@ class TachyonNet:
 
     def tcp_poll(self, mux):
         while not self.done:
-            ready = mux.poll(self.timeout)
+            ready = mux.poll(self.timeout * 8)
             for fd, event in ready:
                 if event & select.POLLIN:
                     self.read_data(fd)
