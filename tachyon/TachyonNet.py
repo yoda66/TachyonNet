@@ -72,8 +72,13 @@ class TachyonNet:
     def run(self):
 
         self._myprint('[+] --< Initializing >--')
-        udp_ports = self.maxudp - self.minudp
-        tcp_ports = self.maxtcp - self.mintcp
+
+        udp_ports = 0
+        if not self.noudp:
+            udp_ports = 1 + self.maxudp - self.minudp
+        tcp_ports = 0
+        if not self.notcp:
+            tcp_ports = 1 + self.maxtcp - self.mintcp
         r_ports = udp_ports + tcp_ports
 
         r_nofile = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
