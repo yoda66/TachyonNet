@@ -31,7 +31,7 @@ class TachyonNet:
 
     def __init__(self, bind_addr='0.0.0.0',
                  mintcp=1024, maxtcp=32768, minudp=1024, maxudp=32768,
-                 timeout=1000, tcp_reset=False, bufsize=8192, backlog=32,
+                 timeout=2000, tcp_reset=False, bufsize=8192, backlog=32,
                  tcp_threads=32, udp_threads=32, notcp=False, noudp=False,
                  noicmp=False, sleeptime=4, daemon=False,
                  syslog_facility='user',
